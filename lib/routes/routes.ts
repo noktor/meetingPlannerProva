@@ -1,5 +1,6 @@
 import {Request, Response, query} from "express";
 import { MeetingController } from "../controllers/MeetingController";
+import { Meeting } from "../models/meetingModel";
 
 export class Routes {    
 
@@ -19,12 +20,27 @@ export class Routes {
         .get((req: Request, res: Response) => {
             this.meetingController.getMeetings()
             .then(meetings =>{
-                console.log(meetings);
                 res.status(200).send({"meetingList": meetings});
             })
             .catch((err: Error )=>{
                 console.log(err);
-                res.status(200).send(err);
+                res.status(500).send(err);
+            })
+        })
+
+        app.route('/createMeeting')
+        .post((req: Request, res: Response) => {
+            let meeting: Meeting = new Meeting(
+                req.body.name,
+                new Date(req.body.startTime),
+                new Date(req.body.endTime)
+            );
+            this.meetingController.createMeeting(meeting)
+            .then(result =>{
+                res.status(200).send({"text": "The meeting has been created correctly."});
+            })
+            .catch((err: Error )=>{
+                res.status(500).send(err);
             })
         })
 
