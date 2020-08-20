@@ -1,12 +1,14 @@
 export class Meeting {
-    private name: string;
-    private startTime: Date;
-    private endTime: Date;
+    public name: string;
+    public startTime: Date;
+    public endTime: Date;
+    public attendants: string[];
 
-    constructor(name: string, startTime: Date, endTime: Date){
+    constructor(name: string, startTime: Date, endTime: Date, attendants: string[]){
         this.name = name;
         this.startTime = startTime;
         this.endTime = endTime;
+        this.attendants = attendants;
     }
 
     public getName(){
@@ -19,6 +21,10 @@ export class Meeting {
 
     public getEndTime(){
         return this.endTime;
+    }
+
+    public getAttendants(){
+        return this.attendants;
     }
 
     public setName(name: string)
@@ -34,5 +40,10 @@ export class Meeting {
     public setEndTime(endTime: Date)
     {
         this.endTime = endTime;
+    }
+
+    public setAttendants(attendants: string[])
+    {
+        this.attendants = attendants;
     }
 }
