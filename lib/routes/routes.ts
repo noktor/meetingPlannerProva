@@ -1,6 +1,7 @@
 import {Request, Response, query} from "express";
 import { MeetingController } from "../controllers/MeetingController";
 import { Meeting } from "../models/meetingModel";
+import { Employee } from "../models/employeeModel";
 
 export class Routes {    
 
@@ -33,11 +34,26 @@ export class Routes {
             let meeting: Meeting = new Meeting(
                 req.body.name,
                 new Date(req.body.startTime),
-                new Date(req.body.endTime)
+                new Date(req.body.endTime),
+                req.body.attendants
             );
             this.meetingController.createMeeting(meeting)
             .then(result =>{
                 res.status(200).send({"text": "The meeting has been created correctly."});
+            })
+            .catch((err: Error )=>{
+                res.status(500).send(err);
+            })
+        })
+
+        app.route('/checkAvailableSpots/:employees/:fromDate/:toDate')
+        .get((req: Request, res: Response) => {
+            let fromDate: Date  = new Date(req.params.fromDate),
+                toDate: Date    = new Date(req.params.toDate),
+                employees: String[] = req.params.employees.split(",");
+            this.meetingController.checkAvailableSpots(fromDate, toDate, employees)
+            .then(employees =>{
+                res.status(200).send({"employees": employees});
             })
             .catch((err: Error )=>{
                 res.status(500).send(err);
