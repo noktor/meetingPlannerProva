@@ -1,12 +1,14 @@
 import { Availability } from './availabilityModel';
 
 export class Employee {
-    private name: string;
-    private surname: string;
-    private role: string;
+    public _id?: string;
+    public name: string;
+    public surname: string;
+    public role: string;
     public availability: Availability[];
 
-    constructor(name: string, surname: string, role: string, availability: Availability[]){
+    constructor(name: string, surname: string, role: string, availability: Availability[], _id?: string){
+        this._id = _id;
         this.name = name;
         this.surname = surname;
         this.role = role;
@@ -29,6 +31,10 @@ export class Employee {
         return this.availability;
     }
 
+    public getId(){
+        return this._id;
+    }
+
     public setName(name: string)
     {
         this.name = name;
@@ -49,8 +55,22 @@ export class Employee {
         this.availability = availability;
     }
 
+    public setId(_id: string)
+    {
+        this._id = _id;
+    }
+
+    //METHODS:
     public addAvailableSlot(availableSlot: Availability)
     {
         this.availability.push(availableSlot);
+    }
+
+    public sortAvailabilityListAsc(): void{
+        this.availability.sort((a: Availability,b: Availability)=>{
+            if (b.to > a.from)    return -1;
+            else if(b.to < a.from) return  1;
+            else return 0;
+        })
     }
 }

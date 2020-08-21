@@ -1,10 +1,12 @@
+import { Employee } from './employeeModel'
+
 export class Meeting {
     public name: string;
     public startTime: Date;
     public endTime: Date;
-    public attendants: string[];
+    public attendants: Employee[];
 
-    constructor(name: string, startTime: Date, endTime: Date, attendants: string[]){
+    constructor(name: string, startTime: Date, endTime: Date, attendants: Employee[]){
         this.name = name;
         this.startTime = startTime;
         this.endTime = endTime;
@@ -42,7 +44,7 @@ export class Meeting {
         this.endTime = endTime;
     }
 
-    public setAttendants(attendants: string[])
+    public setAttendants(attendants: Employee[])
     {
         this.attendants = attendants;
     }
