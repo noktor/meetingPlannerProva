@@ -7,6 +7,10 @@ export const EmployeeSchema = new Schema({
         type: String,
         required: false
     },
+    userName: {
+        type: String,
+        required: true
+    },
     name: {
         type: String,
         required: true

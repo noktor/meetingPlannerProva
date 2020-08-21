@@ -1,7 +1,8 @@
 import {Request, Response, query} from "express";
 import { MeetingController } from "../controllers/MeetingController";
 import { Meeting } from "../models/meetingModel";
-import { Employee } from "../models/employeeModel";
+import * as moment from 'moment';
+import CONSTANTS from '../config/constants';
 
 export class Routes {    
 
@@ -38,13 +39,27 @@ export class Routes {
                 new Date(req.body.endTime),
                 req.body.attendants
             );
-            this.meetingController.createMeeting(meeting)
-            .then(result =>{
-                res.status(200).send({"text": "The meeting has been created correctly."});
-            })
-            .catch((err: Error )=>{
-                res.status(500).send(err);
-            })
+
+            if(meeting.getStartTime() < meeting.getEndTime()
+            && meeting.getStartTime().getUTCHours() >= CONSTANTS.WORKING_HOURS_START && meeting.getEndTime().getUTCHours() <= CONSTANTS.WORKING_HOURS_END
+            && moment(meeting.getStartTime().getTime()).diff(moment(meeting.getEndTime().getTime()), 'days') == 0
+            && meeting.attendants.length > 0)
+            {
+                this.meetingController.createMeeting(meeting)
+                .then(result =>{
+                    if(result)
+                    {
+                        res.status(200).send({"text": "The meeting has been created correctly."});
+                    } else {
+                        res.status(200).send({"text": "One of the employees is not available or the meeting exists."});
+                    }
+                })
+                .catch((err: Error )=>{
+                    res.status(500).send({"text": err});
+                })
+            } else {
+                res.status(200).send({"text": "One of the employees is not available or the meeting exists."});
+            }
         })
 
         app.route('/checkAvailableSpots/:employees/:fromDate/:toDate')
