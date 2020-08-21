@@ -1,14 +1,14 @@
 import * as mongoose from 'mongoose';
 import { MeetingSchema } from '../schemas/meetingSchema';
 import { EmployeeSchema } from '../schemas/employeeSchema';
-import { Meeting } from 'models/meetingModel';
+import { Meeting } from '../models/meetingModel';
 import { Employee } from '../models/employeeModel';
 import { Availability } from '../models/availabilityModel';
 import * as moment from 'moment';
+import CONSTANTS from '../config/constants';
 
 const MeetingDB = mongoose.model('Meeting', MeetingSchema);
-
-const WORKING_HOURS_START: Number = 9, WORKING_HOURS_END: Number = 18;
+const EmployeeDB = mongoose.model('Employee', MeetingSchema);
 
 export class MeetingController{
 
@@ -19,9 +19,9 @@ export class MeetingController{
                 let conditions: object[] = [];
                 for(let employee of employees)
                 {
-                    conditions.push({ 'attendants._id': employee });
+                    conditions.push({ 'attendants.userName': employee });
                 }
-                query = { $and: conditions };
+                query = { $or: conditions };
             }
             MeetingDB.find(
             query,
@@ -41,66 +41,57 @@ export class MeetingController{
 
     public createMeeting (meeting: Meeting) {
         return new Promise(async (resolve, reject) =>{
-            if(meeting.getStartTime() < meeting.getEndTime()
-            && meeting.getStartTime().getUTCHours() >= WORKING_HOURS_START && meeting.getEndTime().getUTCHours() <= WORKING_HOURS_END
-            && moment(meeting.getStartTime().getTime()).diff(moment(meeting.getEndTime().getTime()), 'days') == 0
-            && meeting.attendants.length > 0)
-            {
-                let meetings: Meeting[] = [];
-                for(let attendant in meeting.getAttendants()){
-                    meetings = await MeetingDB.find(
-                    {
-                        $and:
-                        [
-                            {
-                                $or: 
-                                [
+            let meetings: Meeting[] = [];
+            for(let attendant in meeting.getAttendants()){
+                meetings = await MeetingDB.find(
+                {
+                    $and:
+                    [
+                        {
+                            $or: 
+                            [
+                                {
+                                    startTime:
                                     {
-                                        startTime:
-                                        {
-                                            $gte: meeting.getStartTime(),
-                                            $lt: meeting.getEndTime()
-                                        }
-                                    },
-                                    {
-                                        endTime:
-                                        {
-                                            $gt: meeting.getStartTime(),
-                                            $lte: meeting.getEndTime()
-                                        }
+                                        $gte: meeting.getStartTime(),
+                                        $lt: meeting.getEndTime()
                                     }
-                                ]
-                            },
-                            {
-                                'attendants._id': meeting.getAttendants()[attendant]._id
-                            }
-                        ]
-                    })
-                    .catch(err => {
-                        if(err){
-                            reject(err);
+                                },
+                                {
+                                    endTime:
+                                    {
+                                        $gt: meeting.getStartTime(),
+                                        $lte: meeting.getEndTime()
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            'attendants.userName': meeting.getAttendants()[attendant].userName
                         }
-                    });
-                    if(meetings.length>0) break;
-                }
-                if(meetings.length == 0){
-                    MeetingDB.create(meeting, (err) => {
-                        if(err){
-                            reject(err);
-                        }
-                        resolve();
-                    });
-                } else {
-                    reject();
-                }
-
+                    ]
+                })
+                .catch(err => {
+                    if(err){
+                        reject(err);
+                    }
+                });
+                if(meetings.length>0) break;
+            }
+            if(meetings.length == 0){
+                MeetingDB.create(meeting, (err) => {
+                    if(err){
+                        reject(err);
+                    }
+                    resolve(true);
+                });
             } else {
-                reject();
+                resolve(false);
             }
         })
     }
 
-    public checkAvailableSpots (fromDate: Date, toDate: Date, employees: String[]) {
+    public checkAvailableSpots (fromDate: Date, toDate: Date, employees: string[]) {
         return new Promise(async (resolve, reject) =>{
             let employeeList: Employee[] = [];
             for(let employee of employees){
@@ -110,7 +101,7 @@ export class MeetingController{
                     [
                         {startTime:{$gte: fromDate}},
                         {endTime:{$lte: toDate}},
-                        {'attendants._id': employee}
+                        {'attendants.userName': employee}
                     ]
                 })
                 .sort({startTime: 1})
@@ -125,8 +116,23 @@ export class MeetingController{
                 for(let meeting of meetings){
                     for(let attendant of meeting.attendants){
                         if(attendant._id == employee){
-                             employeeModel = new Employee(attendant.name, attendant.surname, attendant.role, []);
+                             employeeModel = new Employee(attendant.userName, attendant.name, attendant.surname, attendant.role, []);
                         }
+                    }
+                }
+
+                if(!employeeModel){
+                    let employeeExists: Employee[] = await EmployeeDB.find({userName: employee})
+                    .catch(err => {
+                        if(err){
+                            reject(err);
+                        }
+                    });
+                    if(employeeExists.length > 0)
+                    {
+                        employeeModel = new Employee(employee, employeeExists[0].name, employeeExists[0].surname, employeeExists[0].role, []);
+                    } else {
+                        employeeModel = new Employee(employee, null, null, null, []);
                     }
                 }
 
@@ -135,45 +141,40 @@ export class MeetingController{
                     employeeModel.addAvailableSlot(new Availability(meeting.startTime, meeting.endTime, false));
                 }
 
-                if(employeeModel.getAvailability()[0].getFrom() > fromDate && employeeModel.getAvailability()[0].getFrom().getUTCHours() > WORKING_HOURS_START)
-                employeeModel.addAvailableSlot(new Availability(fromDate, employeeModel.getAvailability()[0].getFrom()));
-                
-                if(employeeModel.getAvailability()[employeeModel.getAvailability().length-2].getTo() < toDate && employeeModel.getAvailability()[employeeModel.getAvailability().length-2].getTo().getUTCHours() < WORKING_HOURS_END && meetings.length > 2)
-                {
-                    employeeModel.addAvailableSlot(new Availability(employeeModel.getAvailability()[employeeModel.getAvailability().length-2].getTo(), toDate));
-                }else if(employeeModel.getAvailability()[employeeModel.getAvailability().length-1].getTo() < toDate && employeeModel.getAvailability()[employeeModel.getAvailability().length-1].getTo().getUTCHours() < WORKING_HOURS_END && meetings.length == 2)
-                {
-                    employeeModel.addAvailableSlot(new Availability(employeeModel.getAvailability()[employeeModel.getAvailability().length-1].getTo(), toDate));       
-                }
-
-                employeeModel.sortAvailabilityListAsc();
-
-                let finalAvailability: Availability[] = [];
-                for(let i = 0; i < employeeModel.getAvailability().length-1; i++){
-                    if(employeeModel.getAvailability()[i].getTo() < employeeModel.getAvailability()[i+1].getFrom())
+                if(employeeModel.getAvailability().length > 0){
+                    if(employeeModel.getAvailability()[0].getFrom() > fromDate && employeeModel.getAvailability()[0].getFrom().getUTCHours() >= CONSTANTS.WORKING_HOURS_START)
+                    employeeModel.addAvailableSlot(new Availability(fromDate, employeeModel.getAvailability()[0].getFrom()));
+                    
+                    if(employeeModel.getAvailability()[employeeModel.getAvailability().length-2].getTo() < toDate && employeeModel.getAvailability()[employeeModel.getAvailability().length-2].getTo().getUTCHours() < CONSTANTS.WORKING_HOURS_END && meetings.length != 2)
                     {
-                        finalAvailability.push((new Availability(employeeModel.getAvailability()[i].getTo(), employeeModel.getAvailability()[i+1].getFrom())));
+                        employeeModel.addAvailableSlot(new Availability(employeeModel.getAvailability()[employeeModel.getAvailability().length-2].getTo(), toDate));
+                    }else if(employeeModel.getAvailability()[employeeModel.getAvailability().length-1].getTo() < toDate && employeeModel.getAvailability()[employeeModel.getAvailability().length-1].getTo().getUTCHours() < CONSTANTS.WORKING_HOURS_END && meetings.length == 2)
+                    {
+                        employeeModel.addAvailableSlot(new Availability(employeeModel.getAvailability()[employeeModel.getAvailability().length-1].getTo(), toDate));       
                     }
-                }
 
-                for(let available in finalAvailability){
-                    employeeModel.addAvailableSlot(finalAvailability[available]);
-                }
+                    employeeModel.sortAvailabilityListAsc();
 
-                employeeModel.sortAvailabilityListAsc();
+                    let finalAvailability: Availability[] = [];
+                    for(let i = 0; i < employeeModel.getAvailability().length-1; i++){
+                        if(employeeModel.getAvailability()[i].getTo() < employeeModel.getAvailability()[i+1].getFrom())
+                        {
+                            finalAvailability.push((new Availability(employeeModel.getAvailability()[i].getTo(), employeeModel.getAvailability()[i+1].getFrom())));
+                        }
+                    }
+
+                    for(let available in finalAvailability){
+                        employeeModel.addAvailableSlot(finalAvailability[available]);
+                    }
+
+                    employeeModel.sortAvailabilityListAsc();
+                }else{
+                    employeeModel.addAvailableSlot(new Availability(fromDate, toDate));
+                }
 
                 employeeList.push(employeeModel);
             }
 
-            //console.log(employeeList);
-            // if(meetings.length > 0)
-            // {
-            //     resolve();
-            // }
-            // else
-            // {
-            //     reject()
-            // }
             resolve(employeeList);
         })
     }

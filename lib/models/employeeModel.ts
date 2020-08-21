@@ -2,17 +2,24 @@ import { Availability } from './availabilityModel';
 
 export class Employee {
     public _id?: string;
+    public userName: string
     public name: string;
     public surname: string;
     public role: string;
     public availability: Availability[];
 
-    constructor(name: string, surname: string, role: string, availability: Availability[], _id?: string){
+    constructor(userName: string, name: string, surname: string, role: string, availability: Availability[], _id?: string){
         this._id = _id;
+        this.userName = userName;
         this.name = name;
         this.surname = surname;
         this.role = role;
         this.availability = availability;
+    }
+
+
+    public getUserName(){
+        return this.userName;
     }
 
     public getName(){
@@ -33,6 +40,11 @@ export class Employee {
 
     public getId(){
         return this._id;
+    }
+
+    public setUserName(userName: string)
+    {
+        this.userName = userName;
     }
 
     public setName(name: string)
