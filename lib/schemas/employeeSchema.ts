@@ -3,6 +3,10 @@ import * as mongoose from 'mongoose';
 const Schema = mongoose.Schema;
 
 export const EmployeeSchema = new Schema({
+    _id: {
+        type: String,
+        required: false
+    },
     name: {
         type: String,
         required: true

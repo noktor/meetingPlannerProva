@@ -17,9 +17,10 @@ export class Routes {
             })
         })
 
-        app.route('/getMeetings')
+        app.route('/getMeetings/:employees?')
         .get((req: Request, res: Response) => {
-            this.meetingController.getMeetings()
+            let employees: string[] = (req.params.employees) ? req.params.employees.split(',') : [];
+            this.meetingController.getMeetings(employees)
             .then(meetings =>{
                 res.status(200).send({"meetingList": meetings});
             })
@@ -50,7 +51,7 @@ export class Routes {
         .get((req: Request, res: Response) => {
             let fromDate: Date  = new Date(req.params.fromDate),
                 toDate: Date    = new Date(req.params.toDate),
-                employees: String[] = req.params.employees.split(",");
+                employees: string[] = req.params.employees.split(",");
             this.meetingController.checkAvailableSpots(fromDate, toDate, employees)
             .then(employees =>{
                 res.status(200).send({"employees": employees});

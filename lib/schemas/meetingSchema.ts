@@ -17,7 +17,7 @@ export const MeetingSchema = new Schema({
         required: true
     },
     attendants: {
-        type: [String],
+        type: [EmployeeSchema],
         required: true
     }
 });
